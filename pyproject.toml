@@ -27,12 +27,15 @@ packages = [{include = "ratchet_sm"}]
 
 [tool.poetry.dependencies]
 python = "^3.10"
-python-frontmatter = "*"
-pyyaml = "*"
+pyyaml = { version = "*", optional = true }
+python-frontmatter = { version = "*", optional = true }
 pydantic = { version = ">=2.0", optional = true }
 
 [tool.poetry.extras]
+yaml = ["pyyaml"]
+frontmatter = ["python-frontmatter"]
 pydantic = ["pydantic"]
+all = ["pyyaml", "python-frontmatter", "pydantic"]
 
 [tool.poetry.group.dev.dependencies]
 pytest = "*"
@@ -41,6 +44,8 @@ ruff = "*"
 mypy = "*"
 twine = "*"
 pydantic = ">=2.0"
+pyyaml = "*"
+python-frontmatter = "*"
 
 [build-system]
 requires = ["poetry-core"]

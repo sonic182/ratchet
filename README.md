@@ -43,9 +43,20 @@ A pure, provider-agnostic state machine for normalizing and recovering structure
 ### Installation
 
 ```bash
+# minimal (JSON parsing only)
 pip install ratchet-sm
+
 # with Pydantic support
 pip install "ratchet-sm[pydantic]"
+
+# with YAML support (ParseYAML normalizer, SchemaInjection format="yaml")
+pip install "ratchet-sm[yaml]"
+
+# with frontmatter support (ParseFrontmatter normalizer)
+pip install "ratchet-sm[frontmatter]"
+
+# everything
+pip install "ratchet-sm[all]"
 ```
 
 ### Quickstart
