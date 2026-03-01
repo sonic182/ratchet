@@ -59,6 +59,7 @@ while not machine.done:
         messages.append({"role": "user", "content": action.prompt_patch})
 
     elif isinstance(action, FailAction):
+        # action.errors contains validation errors; action.reason is "parse_error" or "validation_error"
         raise RuntimeError(f"Failed after {action.attempts} attempts: {action.reason}")
 ```
 
@@ -113,6 +114,16 @@ The normalizer pipeline converts a raw LLM string into a `dict`. Steps are tried
 | `ParseFrontmatter` | Parses `---` frontmatter blocks |
 
 **Default pipeline**: `[StripFences(), ParseJSON(), ParseYAML(), ParseFrontmatter()]`
+
+### Recommended configurations
+
+| Goal | Pipeline |
+|---|---|
+| JSON responses (or any format, default) | `[StripFences(), ParseJSON(), ParseYAML(), ParseFrontmatter()]` — omit `normalizers=` |
+| YAML-only responses | `[StripFences(), ParseYAML()]` |
+| Frontmatter responses (with YAML fallback) | `[StripFences(), ParseFrontmatter(), ParseYAML()]` |
+
+For the frontmatter+YAML fallback: some models respond with a plain YAML code block (no `---` delimiters), so `ParseYAML()` after `ParseFrontmatter()` catches that gracefully.
 
 You can override it per state:
 
