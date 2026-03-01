@@ -1,5 +1,8 @@
 # ratchet-sm
 
+[![CI](https://github.com/sonic182/ratchet/actions/workflows/ci.yml/badge.svg)](https://github.com/sonic182/ratchet/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/ratchet-sm)](https://pypi.org/project/ratchet-sm/)
+
 A pure, provider-agnostic state machine for normalizing and recovering structured LLM outputs.
 
 `ratchet-sm` gives you a reliable way to extract structured data from LLM responses — handling retries, validation feedback, multi-step flows, and fixer prompts — without being tied to any specific model provider or framework.
