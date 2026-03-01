@@ -1,4 +1,4 @@
-from ratchet.normalizers.json_parser import ParseJSON
+from ratchet_sm.normalizers.json_parser import ParseJSON
 
 pj = ParseJSON()
 

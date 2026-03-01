@@ -1,4 +1,4 @@
-from ratchet.normalizers.frontmatter import ParseFrontmatter
+from ratchet_sm.normalizers.frontmatter import ParseFrontmatter
 
 pf = ParseFrontmatter()
 

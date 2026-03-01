@@ -1,7 +1,7 @@
 import dataclasses
 
-from ratchet.strategies.base import FailureContext
-from ratchet.strategies.validation_feedback import ValidationFeedback
+from ratchet_sm.strategies.base import FailureContext
+from ratchet_sm.strategies.validation_feedback import ValidationFeedback
 
 
 @dataclasses.dataclass

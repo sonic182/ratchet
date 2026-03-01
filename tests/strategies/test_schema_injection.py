@@ -5,8 +5,8 @@ import json
 
 import pytest
 
-from ratchet.strategies.base import FailureContext
-from ratchet.strategies.schema_injection import SchemaInjection
+from ratchet_sm.strategies.base import FailureContext
+from ratchet_sm.strategies.schema_injection import SchemaInjection
 
 
 @dataclasses.dataclass

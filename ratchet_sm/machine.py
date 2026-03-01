@@ -4,14 +4,14 @@ import dataclasses
 from collections.abc import Callable
 from typing import Any
 
-from ratchet.actions import Action, FailAction, FixerAction, RetryAction, ValidAction
-from ratchet.errors import RatchetConfigError
-from ratchet.normalizers import DEFAULT_PIPELINE, run_pipeline
-from ratchet.normalizers.base import Normalizer, Preprocessor
-from ratchet.state import State
-from ratchet.strategies.base import FailureContext
-from ratchet.strategies.fixer import Fixer
-from ratchet.strategies.validation_feedback import ValidationFeedback
+from ratchet_sm.actions import Action, FailAction, FixerAction, RetryAction, ValidAction
+from ratchet_sm.errors import RatchetConfigError
+from ratchet_sm.normalizers import DEFAULT_PIPELINE, run_pipeline
+from ratchet_sm.normalizers.base import Normalizer, Preprocessor
+from ratchet_sm.state import State
+from ratchet_sm.strategies.base import FailureContext
+from ratchet_sm.strategies.fixer import Fixer
+from ratchet_sm.strategies.validation_feedback import ValidationFeedback
 
 
 def _coerce(data: dict[str, Any], schema: type[Any] | None) -> tuple[Any, list[str]]:

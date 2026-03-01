@@ -1,7 +1,7 @@
 import dataclasses
 
-from ratchet.strategies.base import FailureContext
-from ratchet.strategies.fixer import Fixer
+from ratchet_sm.strategies.base import FailureContext
+from ratchet_sm.strategies.fixer import Fixer
 
 
 @dataclasses.dataclass

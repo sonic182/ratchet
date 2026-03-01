@@ -1,4 +1,4 @@
-from ratchet.normalizers.strip_fences import StripFences
+from ratchet_sm.normalizers.strip_fences import StripFences
 
 sf = StripFences()
 

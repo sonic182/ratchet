@@ -27,7 +27,7 @@ import os
 from llm_async import OpenRouterProvider
 from pydantic import BaseModel
 
-from ratchet import FailAction, RetryAction, State, StateMachine, ValidAction
+from ratchet_sm import FailAction, RetryAction, State, StateMachine, ValidAction
 
 logging.basicConfig(
     level=logging.INFO,

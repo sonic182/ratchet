@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from ratchet.normalizers.base import Normalizer
+from ratchet_sm.normalizers.base import Normalizer
 
 
 class ParseJSON(Normalizer):

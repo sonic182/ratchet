@@ -4,13 +4,13 @@ import dataclasses
 
 import pytest
 
-from ratchet.provider_schema import (
+from ratchet_sm.provider_schema import (
     apply_provider_schema_profile,
     derive_json_schema,
     derive_provider_state_json_schema,
     derive_state_json_schema,
 )
-from ratchet.state import State
+from ratchet_sm.state import State
 
 
 @dataclasses.dataclass

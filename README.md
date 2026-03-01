@@ -1,4 +1,4 @@
-# ratchet
+# ratchet-sm
 
 A pure, provider-agnostic state machine for normalizing and recovering structured LLM outputs.
 
@@ -21,9 +21,9 @@ A pure, provider-agnostic state machine for normalizing and recovering structure
 ## Installation
 
 ```bash
-pip install ratchet
+pip install ratchet-sm
 # with Pydantic support
-pip install "ratchet[pydantic]"
+pip install "ratchet-sm[pydantic]"
 ```
 
 ---
@@ -32,7 +32,7 @@ pip install "ratchet[pydantic]"
 
 ```python
 import openai
-from ratchet import StateMachine, State, ValidAction, RetryAction, FailAction
+from ratchet_sm import StateMachine, State, ValidAction, RetryAction, FailAction
 
 client = openai.OpenAI()
 
@@ -128,7 +128,7 @@ For the frontmatter+YAML fallback: some models respond with a plain YAML code bl
 You can override it per state:
 
 ```python
-from ratchet.normalizers import ParseJSON, StripFences
+from ratchet_sm.normalizers import ParseJSON, StripFences
 
 State(name="extract", normalizers=[StripFences(), ParseJSON()])
 ```
@@ -144,7 +144,7 @@ Strategies decide what to do when parsing or validation fails. They produce a `p
 Returns a message listing the errors and the schema:
 
 ```python
-from ratchet.strategies import ValidationFeedback
+from ratchet_sm.strategies import ValidationFeedback
 
 State(name="extract", strategy=ValidationFeedback())
 ```
@@ -154,7 +154,7 @@ State(name="extract", strategy=ValidationFeedback())
 Returns the schema serialized in the requested format — useful when you want to remind the model of the exact shape:
 
 ```python
-from ratchet.strategies import SchemaInjection
+from ratchet_sm.strategies import SchemaInjection
 
 State(name="extract", schema=Person, strategy=SchemaInjection(format="yaml"))
 ```
@@ -166,7 +166,7 @@ Supported formats: `"json_schema"` (default), `"yaml"`, `"simple"`.
 Instead of a retry hint, emits a `FixerAction` with a full self-contained prompt you can send to a separate LLM call (or a different, more capable model):
 
 ```python
-from ratchet.strategies import Fixer
+from ratchet_sm.strategies import Fixer
 
 State(name="extract", strategy=Fixer())
 ```
@@ -265,7 +265,7 @@ All actions expose `.attempts`, `.state_name`, and `.raw`.
 ## Custom normalizer
 
 ```python
-from ratchet.normalizers.base import Normalizer
+from ratchet_sm.normalizers.base import Normalizer
 
 class ParseTOML(Normalizer):
     name = "toml"
@@ -285,7 +285,7 @@ State(name="extract", normalizers=[ParseTOML()])
 ## Custom strategy
 
 ```python
-from ratchet.strategies.base import Strategy, FailureContext
+from ratchet_sm.strategies.base import Strategy, FailureContext
 
 class SlackAlert(Strategy):
     def on_failure(self, context: FailureContext) -> str | None:
@@ -318,7 +318,7 @@ the same adapter path.
 `ratchet` includes helper utilities for this:
 
 ```python
-from ratchet import (
+from ratchet_sm import (
     apply_provider_schema_profile,
     derive_provider_state_json_schema,
     derive_state_json_schema,

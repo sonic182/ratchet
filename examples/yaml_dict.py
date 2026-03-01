@@ -23,8 +23,8 @@ from pprint import pprint
 
 from llm_async import OpenRouterProvider
 
-from ratchet import FailAction, RetryAction, State, StateMachine, ValidAction
-from ratchet.normalizers import ParseYAML, StripFences
+from ratchet_sm import FailAction, RetryAction, State, StateMachine, ValidAction
+from ratchet_sm.normalizers import ParseYAML, StripFences
 
 logging.basicConfig(
     level=logging.INFO,

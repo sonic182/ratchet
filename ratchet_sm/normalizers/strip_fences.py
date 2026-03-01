@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 
-from ratchet.normalizers.base import Preprocessor
+from ratchet_sm.normalizers.base import Preprocessor
 
 _FENCE_RE = re.compile(
     r"^```[a-zA-Z0-9]*\n(.*?)\n```\s*$",

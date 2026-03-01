@@ -1,4 +1,4 @@
-from ratchet.normalizers.yaml_parser import ParseYAML
+from ratchet_sm.normalizers.yaml_parser import ParseYAML
 
 py = ParseYAML()
 

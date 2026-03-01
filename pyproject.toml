@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "ratchet"
+name = "ratchet-sm"
 version = "0.0.1"
 description = "A provider-agnostic state machine for handling, normalizing, and recovering structured LLM outputs."
 authors = ["sonic182 <johander1822@gmail.com>"]
@@ -46,4 +46,4 @@ ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "--cov=ratchet --cov-report=term-missing"
+addopts = "--cov=ratchet_sm --cov-report=term-missing"

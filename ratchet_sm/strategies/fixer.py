@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from typing import Literal
 
-from ratchet.prompts.fixer_default import FIXER_DEFAULT_PROMPT
-from ratchet.strategies.base import FailureContext, Strategy
-from ratchet.strategies.schema_injection import SchemaInjection
+from ratchet_sm.prompts.fixer_default import FIXER_DEFAULT_PROMPT
+from ratchet_sm.strategies.base import FailureContext, Strategy
+from ratchet_sm.strategies.schema_injection import SchemaInjection
 
 
 class Fixer(Strategy):

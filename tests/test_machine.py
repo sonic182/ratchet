@@ -4,7 +4,7 @@ import dataclasses
 
 import pytest
 
-from ratchet import (
+from ratchet_sm import (
     FailAction,
     FixerAction,
     RetryAction,
@@ -12,8 +12,8 @@ from ratchet import (
     StateMachine,
     ValidAction,
 )
-from ratchet.errors import RatchetConfigError
-from ratchet.strategies.fixer import Fixer
+from ratchet_sm.errors import RatchetConfigError
+from ratchet_sm.strategies.fixer import Fixer
 
 
 @dataclasses.dataclass

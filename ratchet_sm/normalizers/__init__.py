@@ -1,13 +1,13 @@
-from ratchet.normalizers.base import (
+from ratchet_sm.normalizers.base import (
     Normalizer,
     NormalizerResult,
     Preprocessor,
     run_pipeline,
 )
-from ratchet.normalizers.frontmatter import ParseFrontmatter
-from ratchet.normalizers.json_parser import ParseJSON
-from ratchet.normalizers.strip_fences import StripFences
-from ratchet.normalizers.yaml_parser import ParseYAML
+from ratchet_sm.normalizers.frontmatter import ParseFrontmatter
+from ratchet_sm.normalizers.json_parser import ParseJSON
+from ratchet_sm.normalizers.strip_fences import StripFences
+from ratchet_sm.normalizers.yaml_parser import ParseYAML
 
 DEFAULT_PIPELINE: list[Preprocessor | Normalizer] = [
     StripFences(),

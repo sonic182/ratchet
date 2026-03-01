@@ -25,8 +25,8 @@ from llm_async.models.response_schema import ResponseSchema
 from llm_async.providers import OpenAIProvider
 from pydantic import BaseModel
 
-from ratchet import FailAction, RetryAction, State, StateMachine, ValidAction
-from ratchet.provider_schema import derive_provider_state_json_schema
+from ratchet_sm import FailAction, RetryAction, State, StateMachine, ValidAction
+from ratchet_sm.provider_schema import derive_provider_state_json_schema
 
 StatePolicy = Literal["provider_only", "ratchet_retry"]
 

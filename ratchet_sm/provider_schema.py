@@ -6,7 +6,7 @@ import types
 from collections.abc import Mapping
 from typing import Any, Union, get_args, get_origin
 
-from ratchet.state import State
+from ratchet_sm.state import State
 
 
 def _is_optional(annotation: Any) -> tuple[bool, Any]:

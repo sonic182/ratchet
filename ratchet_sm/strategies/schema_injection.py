@@ -6,7 +6,7 @@ from typing import Any, Literal
 
 import yaml
 
-from ratchet.strategies.base import FailureContext, Strategy
+from ratchet_sm.strategies.base import FailureContext, Strategy
 
 
 class SchemaInjection(Strategy):

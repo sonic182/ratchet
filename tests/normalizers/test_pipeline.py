@@ -1,7 +1,7 @@
-from ratchet.normalizers.base import run_pipeline
-from ratchet.normalizers.json_parser import ParseJSON
-from ratchet.normalizers.strip_fences import StripFences
-from ratchet.normalizers.yaml_parser import ParseYAML
+from ratchet_sm.normalizers.base import run_pipeline
+from ratchet_sm.normalizers.json_parser import ParseJSON
+from ratchet_sm.normalizers.strip_fences import StripFences
+from ratchet_sm.normalizers.yaml_parser import ParseYAML
 
 
 def test_strip_then_json():

@@ -4,7 +4,7 @@ from typing import Any
 
 import frontmatter
 
-from ratchet.normalizers.base import Normalizer
+from ratchet_sm.normalizers.base import Normalizer
 
 
 class ParseFrontmatter(Normalizer):

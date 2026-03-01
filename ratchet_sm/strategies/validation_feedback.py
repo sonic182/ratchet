@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from ratchet.strategies.base import FailureContext, Strategy
-from ratchet.strategies.schema_injection import SchemaInjection
+from ratchet_sm.strategies.base import FailureContext, Strategy
+from ratchet_sm.strategies.schema_injection import SchemaInjection
 
 DEFAULT_TEMPLATE = (
     "Your previous response did not match the expected format.\n"
