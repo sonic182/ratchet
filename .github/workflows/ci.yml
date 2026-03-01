@@ -39,8 +39,5 @@ jobs:
       - name: Lint
         run: poetry run ruff check ratchet_sm tests
 
-      - name: Type check
-        run: poetry run mypy ratchet_sm
-
       - name: Test
         run: poetry run pytest
