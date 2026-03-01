@@ -211,6 +211,40 @@ machine = StateMachine(
 )
 ```
 
+### The loop
+
+```python
+# Per-state prompts — each state needs its own instruction
+prompts = {
+    "classify": "Is the text about a person or a company? Respond with JSON: {\"type\": \"person\"} or {\"type\": \"company\"}.",
+    "person":   "Extract the person's name, age, occupation, and location as JSON.",
+    "company":  "Extract the company's name, founding year, industry, and headquarters as JSON.",
+}
+
+messages = [{"role": "user", "content": prompts["classify"]}]
+
+while not machine.done:
+    raw = call_llm(messages)
+    action = machine.receive(raw)
+
+    if isinstance(action, ValidAction):
+        if not machine.done:
+            # Machine transitioned; start a fresh conversation for the next state
+            next_state = machine.current_state.name
+            messages = [{"role": "user", "content": prompts[next_state]}]
+
+    elif isinstance(action, RetryAction):
+        messages.append({"role": "assistant", "content": raw})
+        messages.append({"role": "user", "content": action.prompt_patch})
+
+    elif isinstance(action, FailAction):
+        raise RuntimeError(f"Failed in '{action.state_name}': {action.reason}")
+```
+
+Key rule: when `ValidAction` arrives and `not machine.done`, the machine has already
+moved to the next state — `machine.current_state.name` gives the new state name.
+Reset `messages` with a prompt appropriate for that state before the loop continues.
+
 ---
 
 ## Actions reference
@@ -270,6 +304,20 @@ Resets the machine to its initial state, clearing all counters and history:
 ```python
 machine.reset()
 ```
+
+---
+
+## Examples
+
+| Example | Demonstrates |
+|---|---|
+| [`examples/yaml_dict.py`](examples/yaml_dict.py) | YAML normalizer, plain `dict` output, parallel models via OpenRouter |
+| [`examples/frontmatter_dataclass.py`](examples/frontmatter_dataclass.py) | Frontmatter normalizer, `dataclass` schema, `SchemaInjection` strategy |
+| [`examples/openrouter_all_models.py`](examples/openrouter_all_models.py) | Pydantic schema, default JSON pipeline, parallel multi-model comparison |
+| [`examples/multi_state_gemma.py`](examples/multi_state_gemma.py) | Multi-state branching (classify → extract), Pydantic, Gemma 3 via OpenRouter |
+
+All examples require the `llm-async` package (`pip install llm-async`) and
+an `OPENROUTER_API_KEY` environment variable.
 
 ---
 
