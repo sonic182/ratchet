@@ -45,7 +45,7 @@ machine = StateMachine(
 messages = [{"role": "user", "content": 'Return JSON: {"name": "Alice", "age": 30}'}]
 
 while not machine.done:
-    response = client.chat.completions.create(model="gpt-4o", messages=messages)
+    response = client.chat.completions.create(model="gpt-4o-mini", messages=messages)
     raw = response.choices[0].message.content
 
     action = machine.receive(raw)
@@ -106,22 +106,22 @@ State(name="extract", schema=Person)
 
 The normalizer pipeline converts a raw LLM string into a `dict`. Steps are tried in order; the first success wins.
 
-| Normalizer | What it does |
-|---|---|
-| `StripFences` | Strips ` ```json ... ``` ` markdown code fences (preprocessor) |
-| `ParseJSON` | Parses JSON, handles BOM and whitespace |
-| `ParseYAML` | Parses YAML dicts (`yaml.safe_load`) |
-| `ParseFrontmatter` | Parses `---` frontmatter blocks |
+| Normalizer         | What it does                                                   |
+| ------------------ | -------------------------------------------------------------- |
+| `StripFences`      | Strips ` ```json ... ``` ` markdown code fences (preprocessor) |
+| `ParseJSON`        | Parses JSON, handles BOM and whitespace                        |
+| `ParseYAML`        | Parses YAML dicts (`yaml.safe_load`)                           |
+| `ParseFrontmatter` | Parses `---` frontmatter blocks                                |
 
 **Default pipeline**: `[StripFences(), ParseJSON(), ParseYAML(), ParseFrontmatter()]`
 
 ### Recommended configurations
 
-| Goal | Pipeline |
-|---|---|
-| JSON responses (or any format, default) | `[StripFences(), ParseJSON(), ParseYAML(), ParseFrontmatter()]` — omit `normalizers=` |
-| YAML-only responses | `[StripFences(), ParseYAML()]` |
-| Frontmatter responses (with YAML fallback) | `[StripFences(), ParseFrontmatter(), ParseYAML()]` |
+| Goal                                       | Pipeline                                                                              |
+| ------------------------------------------ | ------------------------------------------------------------------------------------- |
+| JSON responses (or any format, default)    | `[StripFences(), ParseJSON(), ParseYAML(), ParseFrontmatter()]` — omit `normalizers=` |
+| YAML-only responses                        | `[StripFences(), ParseYAML()]`                                                        |
+| Frontmatter responses (with YAML fallback) | `[StripFences(), ParseFrontmatter(), ParseYAML()]`                                    |
 
 For the frontmatter+YAML fallback: some models respond with a plain YAML code block (no `---` delimiters), so `ParseYAML()` after `ParseFrontmatter()` catches that gracefully.
 
@@ -217,12 +217,12 @@ machine = StateMachine(
 
 Every `machine.receive(raw)` call returns one of:
 
-| Action | Meaning |
-|---|---|
-| `ValidAction` | Parsing and validation succeeded. `.parsed` holds the result. |
+| Action        | Meaning                                                                                                              |
+| ------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `ValidAction` | Parsing and validation succeeded. `.parsed` holds the result.                                                        |
 | `RetryAction` | Failed; `.prompt_patch` is the hint to add to the next prompt. `.reason` is `"parse_error"` or `"validation_error"`. |
-| `FixerAction` | Failed with `Fixer` strategy; `.fixer_prompt` is a ready-to-send repair prompt. |
-| `FailAction` | Exceeded `max_attempts`; `.history` is the full action trail. |
+| `FixerAction` | Failed with `Fixer` strategy; `.fixer_prompt` is a ready-to-send repair prompt.                                      |
+| `FailAction`  | Exceeded `max_attempts`; `.history` is the full action trail.                                                        |
 
 All actions expose `.attempts`, `.state_name`, and `.raw`.
 
@@ -275,11 +275,11 @@ machine.reset()
 
 ## Why not just use instructor retries?
 
-| | instructor | ratchet |
-|---|---|---|
-| Provider coupling | OpenAI-compatible | Any LLM |
-| Stateful multi-step | No | Yes |
-| Branching flows | No | Yes |
-| Observable actions | No | Yes |
-| Custom repair models | No | Yes (`Fixer`) |
-| Schema optional | No | Yes |
+|                      | instructor        | ratchet       |
+| -------------------- | ----------------- | ------------- |
+| Provider coupling    | OpenAI-compatible | Any LLM       |
+| Stateful multi-step  | No                | Yes           |
+| Branching flows      | No                | Yes           |
+| Observable actions   | No                | Yes           |
+| Custom repair models | No                | Yes (`Fixer`) |
+| Schema optional      | No                | Yes           |
