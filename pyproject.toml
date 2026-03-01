@@ -2,9 +2,28 @@
 name = "ratchet-sm"
 version = "0.0.1"
 description = "A provider-agnostic state machine for handling, normalizing, and recovering structured LLM outputs."
-authors = ["sonic182 <johander1822@gmail.com>"]
+authors = ["Johanderson Mogollon <johander1822@gmail.com>"]
 license = "MIT"
 readme = "README.md"
+repository = "https://github.com/sonic182/ratchet"
+homepage = "https://github.com/sonic182/ratchet"
+documentation = "https://github.com/sonic182/ratchet#readme"
+keywords = ["llm", "ai", "state machine", "structured outputs", "pydantic", "json schema", "retry", "normalizer", "openai", "anthropic", "gemini", "openrouter", "python"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.10",
+  "License :: OSI Approved :: MIT License",
+  "Intended Audience :: Developers",
+  "Topic :: Software Development :: Libraries",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+packages = [{include = "ratchet_sm"}]
+
+[tool.poetry.urls]
+"Bug Tracker" = "https://github.com/sonic182/ratchet/issues"
+"Source" = "https://github.com/sonic182/ratchet"
+"Changelog" = "https://github.com/sonic182/ratchet/blob/main/CHANGELOG.md"
 
 [tool.poetry.dependencies]
 python = "^3.10"
@@ -20,6 +39,7 @@ pytest = "*"
 pytest-cov = "*"
 ruff = "*"
 mypy = "*"
+twine = "*"
 pydantic = ">=2.0"
 
 [build-system]
