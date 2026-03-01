@@ -1,0 +1,15 @@
+[tool.poetry]
+name = "ratchet"
+version = "0.0.1"
+description = "A provider-agnostic state machine for handling, normalizing, and recovering structured LLM outputs."
+authors = ["sonic182 <johander1822@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
