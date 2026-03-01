@@ -1,5 +1,9 @@
 # ratchet-sm
 
+<p align="center">
+  <img src="logo.png" alt="ratchet-sm logo" width="400"/>
+</p>
+
 [![CI](https://github.com/sonic182/ratchet/actions/workflows/ci.yml/badge.svg)](https://github.com/sonic182/ratchet/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/ratchet-sm)](https://pypi.org/project/ratchet-sm/)
 
