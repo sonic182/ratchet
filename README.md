@@ -297,6 +297,52 @@ State(name="extract", strategy=SlackAlert())
 
 ---
 
+## Provider Native JSON Schema + `ratchet`
+
+If your provider supports native JSON schema enforcement (OpenAI, OpenRouter, Gemini),
+you can send a schema in the API request and still keep `ratchet` as the canonical
+validator/state machine.
+
+Recommended pattern:
+
+1. Keep `State.schema` as your source of truth (`dataclass`/Pydantic).
+2. Derive JSON schema for provider calls from `state.schema`.
+3. Apply provider profile adjustments (for example, OpenAI stricter, Gemini looser).
+4. Always pass the response back into `machine.receive(raw)` for uniform validation,
+   retry actions, and transitions.
+
+Schema derivation uses Pydantic v2 `TypeAdapter(...).json_schema()` under the hood,
+so both `BaseModel` and plain Python `dataclass` schemas are supported through
+the same adapter path.
+
+`ratchet` includes helper utilities for this:
+
+```python
+from ratchet import (
+    apply_provider_schema_profile,
+    derive_provider_state_json_schema,
+    derive_state_json_schema,
+)
+```
+
+Optional per-state API overrides can be maintained outside the machine
+(`dict[state_name, json_schema]`) when a specific provider/model needs a tailored payload.
+
+If you need OpenAI/OpenRouter-style strict normalization where every property is forced
+into `required`, opt in explicitly:
+
+```python
+profiled = apply_provider_schema_profile(
+    "openai",
+    schema,
+    enforce_all_properties_required=True,
+)
+```
+
+See [`examples/structured_native_schema_hybrid.py`](examples/structured_native_schema_hybrid.py).
+
+---
+
 ## `reset()`
 
 Resets the machine to its initial state, clearing all counters and history:
@@ -315,6 +361,7 @@ machine.reset()
 | [`examples/frontmatter_dataclass.py`](examples/frontmatter_dataclass.py) | Frontmatter normalizer, `dataclass` schema, `SchemaInjection` strategy |
 | [`examples/openrouter_all_models.py`](examples/openrouter_all_models.py) | Pydantic schema, default JSON pipeline, parallel multi-model comparison |
 | [`examples/multi_state_gemma.py`](examples/multi_state_gemma.py) | Multi-state branching (classify → extract), Pydantic, Gemma 3 via OpenRouter |
+| [`examples/structured_native_schema_hybrid.py`](examples/structured_native_schema_hybrid.py) | Provider-native JSON schema + ratchet canonical validation, hybrid per-state retry policy |
 
 All examples require the `llm-async` package (`pip install llm-async`) and
 an `OPENROUTER_API_KEY` environment variable.
