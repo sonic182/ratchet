@@ -2,15 +2,24 @@ from __future__ import annotations
 
 import dataclasses
 from collections.abc import Callable
-from typing import Any
+from typing import Any, Literal
 
-from ratchet_sm.actions import Action, FailAction, FixerAction, RetryAction, ValidAction
+from ratchet_sm.actions import (
+    Action,
+    FailAction,
+    FixerAction,
+    RetryAction,
+    ToolCallMissingAction,
+    ValidAction,
+)
 from ratchet_sm.errors import RatchetConfigError
-from ratchet_sm.normalizers import DEFAULT_PIPELINE, run_pipeline
+from ratchet_sm.normalizers import DEFAULT_PIPELINE, TOOL_CALL_PIPELINE, run_pipeline
 from ratchet_sm.normalizers.base import Normalizer, Preprocessor
+from ratchet_sm.normalizers.extract_pseudo_tool_call import _ALL_PATTERNS
 from ratchet_sm.state import State
 from ratchet_sm.strategies.base import FailureContext
 from ratchet_sm.strategies.fixer import Fixer
+from ratchet_sm.strategies.require_tool_call_feedback import RequireToolCallFeedback
 from ratchet_sm.strategies.validation_feedback import ValidationFeedback
 
 
@@ -39,6 +48,16 @@ def _coerce(data: dict[str, Any], schema: type[Any] | None) -> tuple[Any, list[s
             return None, [str(exc)]
 
     return None, [f"Unknown schema type: {schema!r}"]
+
+
+def _classify_tool_call_failure(
+    raw: str,
+) -> Literal["pseudo_tool_call_in_text", "no_tool_call"]:
+    """Language-agnostic classification based on structural tag patterns."""
+    for pattern in _ALL_PATTERNS:
+        if pattern.search(raw):
+            return "pseudo_tool_call_in_text"
+    return "no_tool_call"
 
 
 class StateMachine:
@@ -112,25 +131,35 @@ class StateMachine:
             return action
 
         # Resolve normalizer pipeline
-        pipeline: list[Preprocessor | Normalizer] = (
-            state.normalizers if state.normalizers is not None else DEFAULT_PIPELINE
-        )
+        if state.normalizers is not None:
+            pipeline: list[Preprocessor | Normalizer] = state.normalizers
+        elif state.requires_tool_call:
+            pipeline = TOOL_CALL_PIPELINE
+        else:
+            pipeline = DEFAULT_PIPELINE
 
         norm_result = run_pipeline(raw, pipeline)
 
-        strategy = (
-            state.strategy if state.strategy is not None else ValidationFeedback()
-        )
+        # Resolve strategy
+        if state.strategy is not None:
+            strategy = state.strategy
+        elif state.requires_tool_call:
+            strategy = RequireToolCallFeedback()
+        else:
+            strategy = ValidationFeedback()
 
         if norm_result is None:
-            errors = ["Could not parse output into a structured format."]
-            action = self._handle_failure(
-                state=state,
-                raw=raw,
-                errors=errors,
-                reason="parse_error",
-                strategy=strategy,
-            )
+            if state.requires_tool_call:
+                action = self._handle_tool_call_missing(state, raw, strategy)
+            else:
+                errors = ["Could not parse output into a structured format."]
+                action = self._handle_failure(
+                    state=state,
+                    raw=raw,
+                    errors=errors,
+                    reason="parse_error",
+                    strategy=strategy,
+                )
             self._history.append(action)
             return action
 
@@ -165,6 +194,34 @@ class StateMachine:
     # ------------------------------------------------------------------
     # Private helpers
     # ------------------------------------------------------------------
+
+    def _handle_tool_call_missing(
+        self,
+        state: State,
+        raw: str,
+        strategy: Any,
+    ) -> Action:
+        reason = _classify_tool_call_failure(raw)
+        errors = (f"No tool call found in response (reason: {reason}).",)
+
+        context = FailureContext(
+            raw=raw,
+            errors=list(errors),
+            attempts=self._attempts,
+            schema=state.schema,
+            schema_format=state.schema_format,
+            reason=reason,
+        )
+        prompt_patch = strategy.on_failure(context)
+
+        return ToolCallMissingAction(
+            attempts=self._attempts,
+            state_name=state.name,
+            raw=raw,
+            prompt_patch=prompt_patch,
+            errors=errors,
+            reason=reason,
+        )
 
     def _handle_failure(
         self,
