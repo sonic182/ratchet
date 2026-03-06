@@ -25,6 +25,11 @@ _BRACKET_TAG_RE = re.compile(
 _ALL_PATTERNS = [_XML_TAG_RE, _LABELLED_FENCE_RE, _BRACKET_TAG_RE]
 
 
+def has_pseudo_tool_call_tag(raw: str) -> bool:
+    """Return True if any structural tool-call tag pattern is found in raw."""
+    return any(p.search(raw) for p in _ALL_PATTERNS)
+
+
 class ExtractPseudoToolCall(Normalizer):
     """Recover tool calls embedded in the response body as tagged text."""
 

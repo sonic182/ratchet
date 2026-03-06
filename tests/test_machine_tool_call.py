@@ -1,7 +1,5 @@
 """End-to-end state machine tests for requires_tool_call mode."""
 
-import pytest
-
 from ratchet_sm import (
     FailAction,
     State,
@@ -203,3 +201,37 @@ class TestCustomNormalizers:
         action = m.receive("```yaml\nname: search\n```")
         assert isinstance(action, ValidAction)
         assert action.parsed == {"name": "search"}
+
+
+class TestClassifier:
+    """Unit tests for _classify_tool_call_failure."""
+
+    def test_xml_tag_bad_json_is_pseudo(self):
+        from ratchet_sm.machine import _classify_tool_call_failure
+
+        assert _classify_tool_call_failure("<tool_call>bad json</tool_call>") == "pseudo_tool_call_in_text"
+
+    def test_labelled_fence_bad_json_is_pseudo(self):
+        from ratchet_sm.machine import _classify_tool_call_failure
+
+        assert _classify_tool_call_failure("```tool_call\nbad\n```") == "pseudo_tool_call_in_text"
+
+    def test_bracket_tag_bad_json_is_pseudo(self):
+        from ratchet_sm.machine import _classify_tool_call_failure
+
+        assert _classify_tool_call_failure("[TOOL_CALL]bad[/TOOL_CALL]") == "pseudo_tool_call_in_text"
+
+    def test_plain_text_is_no_tool_call(self):
+        from ratchet_sm.machine import _classify_tool_call_failure
+
+        assert _classify_tool_call_failure("Here is my answer.") == "no_tool_call"
+
+    def test_empty_is_no_tool_call(self):
+        from ratchet_sm.machine import _classify_tool_call_failure
+
+        assert _classify_tool_call_failure("") == "no_tool_call"
+
+    def test_plain_json_no_tag_is_no_tool_call(self):
+        from ratchet_sm.machine import _classify_tool_call_failure
+
+        assert _classify_tool_call_failure('{"name": "search"}') == "no_tool_call"

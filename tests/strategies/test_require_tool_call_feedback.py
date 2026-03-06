@@ -1,7 +1,5 @@
 """Unit tests for RequireToolCallFeedback strategy."""
 
-import pytest
-
 from ratchet_sm.prompts.require_tool_call_default import (
     NO_TOOL_CALL_TEMPLATE,
     PSEUDO_CALL_TEMPLATE,

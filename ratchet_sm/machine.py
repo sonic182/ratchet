@@ -15,7 +15,7 @@ from ratchet_sm.actions import (
 from ratchet_sm.errors import RatchetConfigError
 from ratchet_sm.normalizers import DEFAULT_PIPELINE, TOOL_CALL_PIPELINE, run_pipeline
 from ratchet_sm.normalizers.base import Normalizer, Preprocessor
-from ratchet_sm.normalizers.extract_pseudo_tool_call import _ALL_PATTERNS
+from ratchet_sm.normalizers.extract_pseudo_tool_call import has_pseudo_tool_call_tag
 from ratchet_sm.state import State
 from ratchet_sm.strategies.base import FailureContext
 from ratchet_sm.strategies.fixer import Fixer
@@ -54,9 +54,8 @@ def _classify_tool_call_failure(
     raw: str,
 ) -> Literal["pseudo_tool_call_in_text", "no_tool_call"]:
     """Language-agnostic classification based on structural tag patterns."""
-    for pattern in _ALL_PATTERNS:
-        if pattern.search(raw):
-            return "pseudo_tool_call_in_text"
+    if has_pseudo_tool_call_tag(raw):
+        return "pseudo_tool_call_in_text"
     return "no_tool_call"
 
 
