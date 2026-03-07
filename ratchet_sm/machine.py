@@ -50,6 +50,37 @@ def _coerce(data: dict[str, Any], schema: type[Any] | None) -> tuple[Any, list[s
     return None, [f"Unknown schema type: {schema!r}"]
 
 
+def _extract_tool_call_dict(tool_call: Any) -> dict[str, Any]:
+    import json as _json
+
+    if isinstance(tool_call, dict):
+        name = tool_call.get("name")
+        input_ = tool_call.get("input")
+        id_ = tool_call.get("id")
+        function = tool_call.get("function")
+    else:
+        name = getattr(tool_call, "name", None)
+        input_ = getattr(tool_call, "input", None)
+        id_ = getattr(tool_call, "id", None)
+        function = getattr(tool_call, "function", None)
+
+    if function is not None:
+        fn_name = function.get("name") if isinstance(function, dict) else getattr(function, "name", None)
+        fn_args = function.get("arguments") if isinstance(function, dict) else getattr(function, "arguments", None)
+        if fn_name is not None:
+            name = fn_name
+        if fn_args is not None:
+            if isinstance(fn_args, str):
+                try:
+                    input_ = _json.loads(fn_args)
+                except (ValueError, TypeError):
+                    input_ = {"_raw_arguments": fn_args}
+            elif isinstance(fn_args, dict):
+                input_ = fn_args
+
+    return {"name": name, "input": input_ if input_ is not None else {}, "id": id_}
+
+
 def _classify_tool_call_failure(
     raw: str,
 ) -> Literal["pseudo_tool_call_in_text", "no_tool_call"]:
@@ -109,7 +140,7 @@ class StateMachine:
     # Core
     # ------------------------------------------------------------------
 
-    def receive(self, raw: str) -> Action:
+    def receive(self, raw: str, tool_calls: list[Any] | None = None) -> Action:
         if self._done:
             raise RatchetConfigError("Machine is done; call reset() before reuse.")
 
@@ -127,6 +158,48 @@ class StateMachine:
             )
             self._history.append(action)
             self._done = True
+            return action
+
+        # Passthrough branch
+        if state.passthrough:
+            action = ValidAction(
+                attempts=self._attempts,
+                state_name=state.name,
+                raw=raw,
+                parsed=raw,
+                format_detected="passthrough",
+                was_cleaned=False,
+            )
+            self._history.append(action)
+            self._advance(raw)
+            return action
+
+        # Native tool call branch (only when requires_tool_call=True)
+        if tool_calls is not None and state.requires_tool_call:
+            if not tool_calls:
+                strategy = state.strategy if state.strategy is not None else RequireToolCallFeedback()
+                action = self._handle_tool_call_missing(state, raw, strategy)
+                self._history.append(action)
+                return action
+
+            tc_dict = _extract_tool_call_dict(tool_calls[0])
+            parsed, coerce_errors = _coerce(tc_dict, state.schema)
+            if coerce_errors:
+                strategy = state.strategy if state.strategy is not None else RequireToolCallFeedback()
+                action = self._handle_failure(state, raw, coerce_errors, "validation_error", strategy)
+                self._history.append(action)
+                return action
+
+            action = ValidAction(
+                attempts=self._attempts,
+                state_name=state.name,
+                raw=raw,
+                parsed=parsed,
+                format_detected="native_tool_call",
+                was_cleaned=False,
+            )
+            self._history.append(action)
+            self._advance(parsed)
             return action
 
         # Resolve normalizer pipeline

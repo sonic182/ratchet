@@ -13,3 +13,4 @@ class State:
     strategy: Any | None = None  # None → ValidationFeedback()
     schema_format: Literal["json_schema", "yaml", "simple"] = "json_schema"
     requires_tool_call: bool = False  # enables tool-call failure mode
+    passthrough: bool = False  # skip all parsing; return raw text as parsed
