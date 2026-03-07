@@ -36,3 +36,12 @@ class FixerAction(Action):
 class FailAction(Action):
     history: tuple[Action, ...]
     reason: str
+
+
+@dataclass(frozen=True)
+class ToolCallMissingAction(Action):
+    """Emitted when requires_tool_call=True and no actual tool call arrived."""
+
+    prompt_patch: str | None
+    errors: tuple[str, ...]
+    reason: Literal["pseudo_tool_call_in_text", "no_tool_call"]

@@ -2,15 +2,24 @@ from __future__ import annotations
 
 import dataclasses
 from collections.abc import Callable
-from typing import Any
+from typing import Any, Literal
 
-from ratchet_sm.actions import Action, FailAction, FixerAction, RetryAction, ValidAction
+from ratchet_sm.actions import (
+    Action,
+    FailAction,
+    FixerAction,
+    RetryAction,
+    ToolCallMissingAction,
+    ValidAction,
+)
 from ratchet_sm.errors import RatchetConfigError
-from ratchet_sm.normalizers import DEFAULT_PIPELINE, run_pipeline
+from ratchet_sm.normalizers import DEFAULT_PIPELINE, TOOL_CALL_PIPELINE, run_pipeline
 from ratchet_sm.normalizers.base import Normalizer, Preprocessor
+from ratchet_sm.normalizers.extract_pseudo_tool_call import has_pseudo_tool_call_tag
 from ratchet_sm.state import State
 from ratchet_sm.strategies.base import FailureContext
 from ratchet_sm.strategies.fixer import Fixer
+from ratchet_sm.strategies.require_tool_call_feedback import RequireToolCallFeedback
 from ratchet_sm.strategies.validation_feedback import ValidationFeedback
 
 
@@ -39,6 +48,46 @@ def _coerce(data: dict[str, Any], schema: type[Any] | None) -> tuple[Any, list[s
             return None, [str(exc)]
 
     return None, [f"Unknown schema type: {schema!r}"]
+
+
+def _extract_tool_call_dict(tool_call: Any) -> dict[str, Any]:
+    import json as _json
+
+    if isinstance(tool_call, dict):
+        name = tool_call.get("name")
+        input_ = tool_call.get("input")
+        id_ = tool_call.get("id")
+        function = tool_call.get("function")
+    else:
+        name = getattr(tool_call, "name", None)
+        input_ = getattr(tool_call, "input", None)
+        id_ = getattr(tool_call, "id", None)
+        function = getattr(tool_call, "function", None)
+
+    if function is not None:
+        fn_name = function.get("name") if isinstance(function, dict) else getattr(function, "name", None)
+        fn_args = function.get("arguments") if isinstance(function, dict) else getattr(function, "arguments", None)
+        if fn_name is not None:
+            name = fn_name
+        if fn_args is not None:
+            if isinstance(fn_args, str):
+                try:
+                    input_ = _json.loads(fn_args)
+                except (ValueError, TypeError):
+                    input_ = {"_raw_arguments": fn_args}
+            elif isinstance(fn_args, dict):
+                input_ = fn_args
+
+    return {"name": name, "input": input_ if input_ is not None else {}, "id": id_}
+
+
+def _classify_tool_call_failure(
+    raw: str,
+) -> Literal["pseudo_tool_call_in_text", "no_tool_call"]:
+    """Language-agnostic classification based on structural tag patterns."""
+    if has_pseudo_tool_call_tag(raw):
+        return "pseudo_tool_call_in_text"
+    return "no_tool_call"
 
 
 class StateMachine:
@@ -91,7 +140,7 @@ class StateMachine:
     # Core
     # ------------------------------------------------------------------
 
-    def receive(self, raw: str) -> Action:
+    def receive(self, raw: str, tool_calls: list[Any] | None = None) -> Action:
         if self._done:
             raise RatchetConfigError("Machine is done; call reset() before reuse.")
 
@@ -111,26 +160,78 @@ class StateMachine:
             self._done = True
             return action
 
+        # Passthrough branch
+        if state.passthrough:
+            action = ValidAction(
+                attempts=self._attempts,
+                state_name=state.name,
+                raw=raw,
+                parsed=raw,
+                format_detected="passthrough",
+                was_cleaned=False,
+            )
+            self._history.append(action)
+            self._advance(raw)
+            return action
+
+        # Native tool call branch (only when requires_tool_call=True)
+        if tool_calls is not None and state.requires_tool_call:
+            if not tool_calls:
+                strategy = state.strategy if state.strategy is not None else RequireToolCallFeedback()
+                action = self._handle_tool_call_missing(state, raw, strategy)
+                self._history.append(action)
+                return action
+
+            tc_dict = _extract_tool_call_dict(tool_calls[0])
+            parsed, coerce_errors = _coerce(tc_dict, state.schema)
+            if coerce_errors:
+                strategy = state.strategy if state.strategy is not None else RequireToolCallFeedback()
+                action = self._handle_failure(state, raw, coerce_errors, "validation_error", strategy)
+                self._history.append(action)
+                return action
+
+            action = ValidAction(
+                attempts=self._attempts,
+                state_name=state.name,
+                raw=raw,
+                parsed=parsed,
+                format_detected="native_tool_call",
+                was_cleaned=False,
+            )
+            self._history.append(action)
+            self._advance(parsed)
+            return action
+
         # Resolve normalizer pipeline
-        pipeline: list[Preprocessor | Normalizer] = (
-            state.normalizers if state.normalizers is not None else DEFAULT_PIPELINE
-        )
+        if state.normalizers is not None:
+            pipeline: list[Preprocessor | Normalizer] = state.normalizers
+        elif state.requires_tool_call:
+            pipeline = TOOL_CALL_PIPELINE
+        else:
+            pipeline = DEFAULT_PIPELINE
 
         norm_result = run_pipeline(raw, pipeline)
 
-        strategy = (
-            state.strategy if state.strategy is not None else ValidationFeedback()
-        )
+        # Resolve strategy
+        if state.strategy is not None:
+            strategy = state.strategy
+        elif state.requires_tool_call:
+            strategy = RequireToolCallFeedback()
+        else:
+            strategy = ValidationFeedback()
 
         if norm_result is None:
-            errors = ["Could not parse output into a structured format."]
-            action = self._handle_failure(
-                state=state,
-                raw=raw,
-                errors=errors,
-                reason="parse_error",
-                strategy=strategy,
-            )
+            if state.requires_tool_call:
+                action = self._handle_tool_call_missing(state, raw, strategy)
+            else:
+                errors = ["Could not parse output into a structured format."]
+                action = self._handle_failure(
+                    state=state,
+                    raw=raw,
+                    errors=errors,
+                    reason="parse_error",
+                    strategy=strategy,
+                )
             self._history.append(action)
             return action
 
@@ -165,6 +266,34 @@ class StateMachine:
     # ------------------------------------------------------------------
     # Private helpers
     # ------------------------------------------------------------------
+
+    def _handle_tool_call_missing(
+        self,
+        state: State,
+        raw: str,
+        strategy: Any,
+    ) -> Action:
+        reason = _classify_tool_call_failure(raw)
+        errors = (f"No tool call found in response (reason: {reason}).",)
+
+        context = FailureContext(
+            raw=raw,
+            errors=list(errors),
+            attempts=self._attempts,
+            schema=state.schema,
+            schema_format=state.schema_format,
+            reason=reason,
+        )
+        prompt_patch = strategy.on_failure(context)
+
+        return ToolCallMissingAction(
+            attempts=self._attempts,
+            state_name=state.name,
+            raw=raw,
+            prompt_patch=prompt_patch,
+            errors=errors,
+            reason=reason,
+        )
 
     def _handle_failure(
         self,
