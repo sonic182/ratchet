@@ -27,6 +27,9 @@ A pure, provider-agnostic state machine for normalizing and recovering structure
   - [Custom normalizer](#custom-normalizer)
   - [Custom strategy](#custom-strategy)
   - [Provider Native JSON Schema](#provider-native-json-schema)
+  - [Tool-call mode](#tool-call-mode)
+  - [Native tool calls](#native-tool-calls)
+  - [Passthrough state](#passthrough-state)
   - [reset()](#reset)
 - [Examples](#examples)
 - [Why not just use instructor retries?](#why-not-just-use-instructor-retries)
@@ -43,6 +46,9 @@ A pure, provider-agnostic state machine for normalizing and recovering structure
 - **Schema support** — plain `dict`, Python `dataclass`, or Pydantic `BaseModel`
 - **Retry strategies** — `ValidationFeedback`, `SchemaInjection`, or `Fixer`
 - **Multi-state flows** — linear or branching transitions between extraction steps
+- **Tool-call mode** — extracts pseudo tool calls from XML tags, labelled fences, and bracket tags; returns targeted feedback when the model misses the call
+- **Native tool calls** — pass `tool_calls=` from provider responses directly into `receive()` for uniform validation and state advancement
+- **Passthrough states** — free-form chat states that forward raw text straight through without parsing
 - **Observable** — every action is a plain dataclass you can inspect or log
 
 ### Installation
@@ -290,12 +296,13 @@ Reset `messages` with a prompt appropriate for that state before the loop contin
 
 Every `machine.receive(raw)` call returns one of:
 
-| Action        | Meaning                                                                                                              |
-| ------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `ValidAction` | Parsing and validation succeeded. `.parsed` holds the result.                                                        |
-| `RetryAction` | Failed; `.prompt_patch` is the hint to add to the next prompt. `.reason` is `"parse_error"` or `"validation_error"`. |
-| `FixerAction` | Failed with `Fixer` strategy; `.fixer_prompt` is a ready-to-send repair prompt.                                      |
-| `FailAction`  | Exceeded `max_attempts`; `.history` is the full action trail.                                                        |
+| Action                 | Meaning                                                                                                              |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `ValidAction`          | Parsing and validation succeeded. `.parsed` holds the result. `.format_detected` is e.g. `"json"`, `"native_tool_call"`, `"passthrough"`. |
+| `RetryAction`          | Failed; `.prompt_patch` is the hint to add to the next prompt. `.reason` is `"parse_error"` or `"validation_error"`. |
+| `FixerAction`          | Failed with `Fixer` strategy; `.fixer_prompt` is a ready-to-send repair prompt.                                      |
+| `ToolCallMissingAction`| No tool call found in the response (requires_tool_call=True). `.reason` is `"no_tool_call"` or `"pseudo_tool_call_in_text"`. `.prompt_patch` contains recovery instructions. |
+| `FailAction`           | Exceeded `max_attempts`; `.history` is the full action trail.                                                        |
 
 All actions expose `.attempts`, `.state_name`, and `.raw`.
 
@@ -378,6 +385,101 @@ profiled = apply_provider_schema_profile(
 
 See [`examples/structured_native_schema_hybrid.py`](examples/structured_native_schema_hybrid.py).
 
+### Tool-call mode
+
+When a state has `requires_tool_call=True`, ratchet routes the text response through the `TOOL_CALL_PIPELINE`, which recognizes three pseudo tool-call patterns emitted by models that do not support native function calling:
+
+| Pattern | Example |
+|---|---|
+| XML tag | `<tool_call>{"name": "search", "input": {"q": "hi"}}</tool_call>` |
+| Labelled fence | ` ```tool_call\n{"name": "search"}\n``` ` |
+| Bracket tag | `[TOOL_CALL]{"name": "search"}[/TOOL_CALL]` |
+
+Plain JSON with no tag is also accepted as a fallback.
+
+```python
+from ratchet_sm import State, StateMachine, ToolCallMissingAction, ValidAction
+
+machine = StateMachine(
+    states={"call": State(name="call", requires_tool_call=True)},
+    transitions={},
+    initial="call",
+)
+
+while not machine.done:
+    raw = call_llm(messages)
+    action = machine.receive(raw)
+
+    if isinstance(action, ValidAction):
+        tool_call = action.parsed  # dict with at least "name"
+
+    elif isinstance(action, ToolCallMissingAction):
+        # action.reason: "no_tool_call" or "pseudo_tool_call_in_text"
+        messages.append({"role": "assistant", "content": raw})
+        messages.append({"role": "user", "content": action.prompt_patch})
+```
+
+You can customize feedback prompts via `RequireToolCallFeedback`:
+
+```python
+from ratchet_sm.strategies import RequireToolCallFeedback
+
+State(
+    name="call",
+    requires_tool_call=True,
+    strategy=RequireToolCallFeedback(
+        no_call_template="You must respond with a tool call.",
+        pseudo_call_template="Your tool call tag had invalid JSON. Please fix it.",
+    ),
+)
+```
+
+### Native tool calls
+
+When the provider returns `response.tool_calls` natively (OpenAI, Anthropic, etc.), pass them directly into `receive()`:
+
+```python
+response = client.chat.completions.create(
+    model="gpt-4o",
+    tools=[...],
+    messages=messages,
+)
+
+action = machine.receive(
+    raw=response.choices[0].message.content or "",
+    tool_calls=response.choices[0].message.tool_calls,
+)
+```
+
+ratchet normalizes the tool call via a duck-typed extractor that handles:
+- Dicts with `"name"` / `"input"` keys (Anthropic-style)
+- Objects with `.name` / `.input` attributes
+- OpenAI-style `function.arguments` — both JSON strings and dicts
+
+The extracted dict is validated against `state.schema` exactly like any other response. On success, `ValidAction.format_detected == "native_tool_call"`. An empty `tool_calls=[]` returns `ToolCallMissingAction`. Passing `tool_calls=None` falls through to the text pipeline (backward compatible).
+
+When `requires_tool_call=False` (the default), the `tool_calls` parameter is silently ignored and the existing text pipeline runs on `raw`.
+
+### Passthrough state
+
+A state with `passthrough=True` skips all parsing and returns the raw text directly as a `ValidAction`. This is useful for free-form chat steps inside multi-step flows.
+
+```python
+machine = StateMachine(
+    states={
+        "chat":    State(name="chat",    passthrough=True),
+        "extract": State(name="extract", schema=Person),
+    },
+    transitions={"chat": "extract"},
+    initial="chat",
+)
+
+action = machine.receive("Sure, tell me more about Alice.")
+# ValidAction(parsed="Sure, tell me more about Alice.", format_detected="passthrough")
+```
+
+`schema` is ignored when `passthrough=True`. The state still respects `max_attempts` — a `FailAction` is returned if the guard fires before the passthrough branch.
+
 ### `reset()`
 
 Resets the machine to its initial state, clearing all counters and history:
@@ -397,6 +499,7 @@ machine.reset()
 | [`examples/openrouter_all_models.py`](examples/openrouter_all_models.py) | Pydantic schema, default JSON pipeline, parallel multi-model comparison |
 | [`examples/multi_state_gemma.py`](examples/multi_state_gemma.py) | Multi-state branching (classify → extract), Pydantic, Gemma 3 via OpenRouter |
 | [`examples/structured_native_schema_hybrid.py`](examples/structured_native_schema_hybrid.py) | Provider-native JSON schema + ratchet-sm canonical validation, hybrid per-state retry policy |
+| [`examples/tool_call_loop.py`](examples/tool_call_loop.py) | Tool-call loop with pseudo-call extraction, `RequireToolCallFeedback`, OpenRouter + DeepSeek v3.2-exp |
 
 All examples require the `llm-async` package (`pip install llm-async`) and
 an `OPENROUTER_API_KEY` environment variable.

@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- **Tool-call mode** (`State(requires_tool_call=True)`): routes text responses through the `TOOL_CALL_PIPELINE`, which extracts pseudo tool calls from XML tags (`<tool_call>…</tool_call>`), labelled fences (` ```tool_call…``` `), and bracket tags (`[TOOL_CALL]…[/TOOL_CALL]`), with fallback to plain JSON. Returns `ToolCallMissingAction` when no valid call is found.
+- **`ToolCallMissingAction`**: new action emitted when `requires_tool_call=True` and the response contains no extractable call. Carries `reason` (`"pseudo_tool_call_in_text"` or `"no_tool_call"`) and `prompt_patch`.
+- **`RequireToolCallFeedback` strategy**: default strategy for tool-call states; produces targeted feedback prompts for pseudo-call-in-text vs. no-call-at-all failures. Customizable via `no_call_template` and `pseudo_call_template`.
+- **`ExtractPseudoToolCall` normalizer**: handles all three pseudo-call tag patterns; continues to the next pattern when the first match contains invalid JSON.
+- **`TOOL_CALL_PIPELINE`**: exported from `ratchet_sm`; the default pipeline used when `requires_tool_call=True`.
+- **Native tool-call path** (`receive(raw, tool_calls=[…])`): when `requires_tool_call=True` and `tool_calls` is provided, ratchet bypasses the text pipeline. The first element is extracted via `_extract_tool_call_dict()`, validated against `state.schema`, and returned as `ValidAction(format_detected="native_tool_call")`. Empty list returns `ToolCallMissingAction`; `tool_calls=None` falls through to the text pipeline (backward compatible).
+- **`_extract_tool_call_dict()`**: duck-typed helper that normalizes both plain dicts and objects with attributes, including OpenAI-style `function.arguments` (JSON string or dict).
+- **`State.passthrough=True`**: skips all parsing and validation; raw text is returned directly as `ValidAction(parsed=raw, format_detected="passthrough")`. Useful for free-form chat states in multi-step flows. `schema` is ignored when passthrough is active.
+- **`examples/tool_call_loop.py`**: end-to-end tool-call loop demo using OpenRouter + DeepSeek v3.2-exp.
+
 ## [0.0.1] - 2026-03-02
 
 ### Added
