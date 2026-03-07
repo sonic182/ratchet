@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-03-07
+
 ### Added
 - **Tool-call mode** (`State(requires_tool_call=True)`): routes text responses through the `TOOL_CALL_PIPELINE`, which extracts pseudo tool calls from XML tags (`<tool_call>…</tool_call>`), labelled fences (` ```tool_call…``` `), and bracket tags (`[TOOL_CALL]…[/TOOL_CALL]`), with fallback to plain JSON. Returns `ToolCallMissingAction` when no valid call is found.
 - **`ToolCallMissingAction`**: new action emitted when `requires_tool_call=True` and the response contains no extractable call. Carries `reason` (`"pseudo_tool_call_in_text"` or `"no_tool_call"`) and `prompt_patch`.
@@ -23,5 +25,6 @@ All notable changes to this project will be documented in this file.
 - `pyyaml` and `python-frontmatter` are optional extras (`ratchet-sm[yaml]`, `ratchet-sm[frontmatter]`, `ratchet-sm[all]`) — minimal install requires neither.
 - CI workflow running lint, tests, and build across Python 3.10, 3.11, and 3.12.
 
-[Unreleased]: https://github.com/sonic182/ratchet-sm/compare/0.0.1...HEAD
+[Unreleased]: https://github.com/sonic182/ratchet-sm/compare/0.1.0...HEAD
+[0.1.0]: https://github.com/sonic182/ratchet-sm/compare/0.0.1...0.1.0
 [0.0.1]: https://github.com/sonic182/ratchet-sm/releases/tag/0.0.1
