@@ -7,6 +7,7 @@ from ratchet_sm.normalizers.base import (
 from ratchet_sm.normalizers.extract_pseudo_tool_call import ExtractPseudoToolCall
 from ratchet_sm.normalizers.frontmatter import ParseFrontmatter
 from ratchet_sm.normalizers.json_parser import ParseJSON
+from ratchet_sm.normalizers.repair_json import RepairJSON
 from ratchet_sm.normalizers.strip_fences import StripFences
 from ratchet_sm.normalizers.yaml_parser import ParseYAML
 
@@ -23,6 +24,12 @@ TOOL_CALL_PIPELINE: list[Preprocessor | Normalizer] = [
     ParseJSON(),              # plain JSON fallback (no YAML / frontmatter)
 ]
 
+HEALING_PIPELINE: list[Preprocessor | Normalizer] = [
+    StripFences(),
+    ParseJSON(),
+    RepairJSON(),  # fallback: repairs malformed JSON and extracts from mixed text
+]
+
 __all__ = [
     "Normalizer",
     "NormalizerResult",
@@ -33,6 +40,8 @@ __all__ = [
     "ParseYAML",
     "ParseFrontmatter",
     "ExtractPseudoToolCall",
+    "RepairJSON",
     "DEFAULT_PIPELINE",
     "TOOL_CALL_PIPELINE",
+    "HEALING_PIPELINE",
 ]

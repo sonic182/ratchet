@@ -632,6 +632,20 @@ test = ["async-timeout", "pytest", "pytest-asyncio (>=0.17)", "pytest-trio", "te
 trio = ["trio"]
 
 [[package]]
+name = "json-repair"
+version = "0.58.5"
+description = "A package to repair broken json strings"
+optional = false
+python-versions = ">=3.10"
+files = [
+    {file = "json_repair-0.58.5-py3-none-any.whl", hash = "sha256:16f65addc58d8e0b2b8514e3f6ea9ff568267ce94ead95f4faf90e40dd35d526"},
+    {file = "json_repair-0.58.5.tar.gz", hash = "sha256:2dfdb44573197eeea8eda23f23677412634b2fe2a93bd1dbe4f1b88e4896efa3"},
+]
+
+[package.extras]
+schema = ["jsonschema (>=4.21)", "pydantic (>=2)"]
+
+[[package]]
 name = "keyring"
 version = "25.7.0"
 description = "Store and access your passwords safely."
@@ -1566,4 +1580,4 @@ yaml = ["pyyaml"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "8554e6d283f9a98f8225511b84917be3a5ed39f68bdbace3748c896770803db5"
+content-hash = "592525499e51c502a917a59bc53092b47adfb21ba8809873d0fd37334a768358"
