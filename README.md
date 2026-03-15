@@ -20,6 +20,7 @@ A pure, provider-agnostic state machine for normalizing and recovering structure
 - [Reference](#reference)
   - [Schemas](#schemas)
   - [Normalizers](#normalizers)
+    - [HEALING_PIPELINE](#healing_pipeline)
   - [Strategies](#strategies)
   - [Multi-state flows](#multi-state-flows)
   - [Actions reference](#actions-reference)
@@ -42,7 +43,7 @@ A pure, provider-agnostic state machine for normalizing and recovering structure
 
 - **Provider-agnostic** — works with OpenAI, Anthropic, or any LLM
 - **Pure state machine** — no I/O, no LLM calls; you own the call loop
-- **Normalizer pipeline** — strips fences, parses JSON/YAML/frontmatter automatically
+- **Normalizer pipeline** — strips fences, parses JSON/YAML/frontmatter, repairs malformed JSON automatically
 - **Schema support** — plain `dict`, Python `dataclass`, or Pydantic `BaseModel`
 - **Retry strategies** — `ValidationFeedback`, `SchemaInjection`, or `Fixer`
 - **Multi-state flows** — linear or branching transitions between extraction steps
@@ -163,18 +164,35 @@ The normalizer pipeline converts a raw LLM string into a `dict`. Steps are tried
 | `ParseJSON`        | Parses JSON, handles BOM and whitespace                        |
 | `ParseYAML`        | Parses YAML dicts (`yaml.safe_load`)                           |
 | `ParseFrontmatter` | Parses `---` frontmatter blocks                                |
+| `RepairJSON`       | Repairs malformed JSON (missing brackets, trailing commas, unquoted keys, mixed text + JSON) |
 
 **Default pipeline**: `[StripFences(), ParseJSON(), ParseYAML(), ParseFrontmatter()]`
 
 #### Recommended configurations
 
-| Goal                                       | Pipeline                                                                              |
+| Goal                                       | Pipeline / constant                                                                   |
 | ------------------------------------------ | ------------------------------------------------------------------------------------- |
 | JSON responses (or any format, default)    | `[StripFences(), ParseJSON(), ParseYAML(), ParseFrontmatter()]` — omit `normalizers=` |
 | YAML-only responses                        | `[StripFences(), ParseYAML()]`                                                        |
 | Frontmatter responses (with YAML fallback) | `[StripFences(), ParseFrontmatter(), ParseYAML()]`                                    |
+| Malformed / healing (OpenRouter, weak LLMs) | `HEALING_PIPELINE` — see below                                                       |
 
 For the frontmatter+YAML fallback: some models respond with a plain YAML code block (no `---` delimiters), so `ParseYAML()` after `ParseFrontmatter()` catches that gracefully.
+
+#### `HEALING_PIPELINE`
+
+Use `HEALING_PIPELINE` when the model may emit malformed JSON — common with weaker models or OpenRouter's response healing scenarios. It runs `StripFences` and `ParseJSON` first (fast path), then falls back to `RepairJSON` which handles:
+
+- Missing closing brackets/braces — `{"name": "Alice", "age": 30` → `{"name": "Alice", "age": 30}`
+- Trailing commas — `{"name": "David",}` → `{"name": "David"}`
+- Unquoted keys — `{name: "Eve", age: 40}` → `{"name": "Eve", "age": 40}`
+- Mixed text + JSON — `Here's the data: {"name": "Bob"}` → `{"name": "Bob"}`
+
+```python
+from ratchet_sm.normalizers import HEALING_PIPELINE
+
+State(name="extract", schema=Person, normalizers=HEALING_PIPELINE)
+```
 
 You can override it per state:
 

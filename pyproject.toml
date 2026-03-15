@@ -30,6 +30,7 @@ python = "^3.10"
 pyyaml = { version = "*", optional = true }
 python-frontmatter = { version = "*", optional = true }
 pydantic = { version = ">=2.0", optional = true }
+json-repair = "*"
 
 [tool.poetry.extras]
 yaml = ["pyyaml"]
