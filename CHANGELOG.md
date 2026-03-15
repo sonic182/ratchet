@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-03-15
+
+### Added
+- **`RepairJSON` normalizer**: repairs malformed JSON using the `json-repair` library. Handles missing closing brackets/braces, trailing commas, unquoted keys, and mixed text + JSON (e.g. `Here's the data: {"name": "Bob"}`). Returns `None` for non-dict results.
+- **`HEALING_PIPELINE`**: new built-in pipeline `[StripFences(), ParseJSON(), RepairJSON()]` for use with weaker models or providers (e.g. OpenRouter) that may emit malformed JSON. Falls back to `RepairJSON` only when standard parsing fails.
+- **`json-repair` dependency**: added as a required (non-optional) dependency given its small size and broad utility.
+
 ## [0.1.0] - 2026-03-07
 
 ### Added
@@ -25,6 +32,7 @@ All notable changes to this project will be documented in this file.
 - `pyyaml` and `python-frontmatter` are optional extras (`ratchet-sm[yaml]`, `ratchet-sm[frontmatter]`, `ratchet-sm[all]`) — minimal install requires neither.
 - CI workflow running lint, tests, and build across Python 3.10, 3.11, and 3.12.
 
-[Unreleased]: https://github.com/sonic182/ratchet-sm/compare/0.1.0...HEAD
+[Unreleased]: https://github.com/sonic182/ratchet-sm/compare/0.2.0...HEAD
+[0.2.0]: https://github.com/sonic182/ratchet-sm/compare/0.1.0...0.2.0
 [0.1.0]: https://github.com/sonic182/ratchet-sm/compare/0.0.1...0.1.0
 [0.0.1]: https://github.com/sonic182/ratchet-sm/releases/tag/0.0.1

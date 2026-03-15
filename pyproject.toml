@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "ratchet-sm"
-version = "0.1.0"
+version = "0.2.0"
 description = "A provider-agnostic state machine for handling, normalizing, and recovering structured LLM outputs."
 authors = ["Johanderson Mogollon <johander1822@gmail.com>"]
 license = "MIT"
